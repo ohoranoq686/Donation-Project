@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ImpactChain - Decentralized Crowdfunding</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f6f9;
+            line-height: 1.6;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .campaign-card {
+            border: 1px solid #e0e0e0;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+        input, textarea, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .progress-bar {
+            width: 100%;
+            background-color: #e0e0e0;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .progress {
+            background-color: #4CAF50;
+            height: 20px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Create New Campaign</h2>
+        <input type="text" id="campaignTitle" placeholder="Campaign Title">
+        <textarea id="campaignDescription" placeholder="Campaign Description"></textarea>
+        <input type="number" id="goalAmount" placeholder="Funding Goal">
+        <input type="datetime-local" id="campaignDeadline">
+        <button onclick="createCampaign()">Create Campaign</button>
+    </div>
+
+    <div class="container">
+        <h2>Donate to Campaign</h2>
+        <input type="number" id="campaignId" placeholder="Campaign ID">
+        <input type="number" id="donationAmount" placeholder="Donation Amount">
+        <button onclick="donateToCampaign()">Donate</button>
+    </div>
+
+    <div class="container">
+        <h2>Add Campaign Impact</h2>
+        <input type="number" id="impactCampaignId" placeholder="Campaign ID">
+        <textarea id="impactDescription" placeholder="Impact Description"></textarea>
+        <input type="text" id="evidenceUrl" placeholder="Evidence URL">
+        <button onclick="addCampaignImpact()">Add Impact</button>
+    </div>
+
+    <div class="container">
+        <h2>Campaign List</h2>
+        <div id="campaignsList"></div>
+    </div>
+
+    <script type="module">
+        import { backend } from 'declarations/backend';
+
+const ImpactChain = backend;
+        // Fungsi untuk membuat kampanye
+        window.createCampaign = async () => {
+            const title = document.getElementById('campaignTitle').value;
+            const description = document.getElementById('campaignDescription').value;
+            const goalAmount = parseInt(document.getElementById('goalAmount').value);
+            const deadline = new Date(document.getElementById('campaignDeadline').value).getTime();
+
+            try {
+                const result = await ImpactChain.createCampaign(title, description, goalAmount, deadline);
+                if (result.ok) {
+                    alert(`Campaign created with ID: ${result.ok}`);
+                    loadCampaigns();
+                } else {
+                    alert(`Error: ${result.err}`);
+                }
+            } catch (error) {
+                console.error('Campaign creation failed:', error);
+            }
+        };
+
+        // Fungsi untuk donasi
+        window.donateToCampaign = async () => {
+            const campaignId = parseInt(document.getElementById('campaignId').value);
+            const amount = parseInt(document.getElementById('donationAmount').value);
+
+            try {
+                const result = await ImpactChain.donate(campaignId, amount);
+                if (result.ok) {
+                    alert(`Donated ${amount} successfully`);
+                    loadCampaigns();
+                } else {
+                    alert(`Error: ${result.err}`);
+                }
+            } catch (error) {
+                console.error('Donation failed:', error);
+            }
+        };
+
+        // Fungsi untuk menambah dampak
+        window.addCampaignImpact = async () => {
+            const campaignId = parseInt(document.getElementById('impactCampaignId').value);
+            const description = document.getElementById('impactDescription').value;
+            const evidenceUrl = document.getElementById('evidenceUrl').value;
+
+            try {
+                const result = await ImpactChain.addImpact(campaignId, description, evidenceUrl);
+                if (result.ok) {
+                    alert('Impact added successfully');
+                    loadCampaigns();
+                } else {
+                    alert(`Error: ${result.err}`);
+                }
+            } catch (error) {
+                console.error('Adding impact failed:', error);
+            }
+        };
+
+        // Fungsi untuk memuat daftar kampanye
+        async function loadCampaigns() {
+            const campaignsList = document.getElementById('campaignsList');
+            campaignsList.innerHTML = '';
+
+            try {
+                const campaigns = await ImpactChain.getAllCampaigns();
+                campaigns.forEach(([id, campaign]) => {
+                    const progressPercentage = (campaign.currentAmount / campaign.goalAmount) * 100;
+                    const campaignDiv = document.createElement('div');
+                    campaignDiv.className = 'campaign-card';
+                    campaignDiv.innerHTML = `
+                        <h3>${campaign.title}</h3>
+                        <p>${campaign.description}</p>
+                        <div>Goal: ${campaign.goalAmount} | Current: ${campaign.currentAmount}</div>
+                        <div class="progress-bar">
+                            <div class="progress" style="width: ${progressPercentage}%"></div>
+                        </div>
+                        <div>Status: ${campaign.status}</div>
+                        <h4>Impacts:</h4>
+                        ${campaign.impacts.map(impact => `
+                            <div>
+                                <p>${impact.description}</p>
+                                <a href="${impact.evidenceUrl}" target="_blank">View Evidence</a>
+                            </div>
+                        `).join('') || 'No impacts yet'}
+                    `;
+                    campaignsList.appendChild(campaignDiv);
+                });
+            } catch (error) {
+                console.error('Failed to load campaigns:', error);
+            }
+        }
+
+        // Muat kampanye saat halaman dimuat
+        loadCampaigns();
+    </script>
+</body>
+</html>
